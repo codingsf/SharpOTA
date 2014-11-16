@@ -289,13 +289,6 @@ static int inject(pid_t pid, const char *sopath, const char *soentry, int argc, 
     return 0;
 }
 
-
-
-int mystat(const char *f, struct stat *s) {
-    printf("mystat: %s\n", f);
-    return -1;
-}
-
 int main(int argc, char *argv[]) {
     if (argc < 4)
         usage(argv[0]);
