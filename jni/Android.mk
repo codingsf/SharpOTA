@@ -20,8 +20,14 @@ LOCAL_CFLAGS += -Wall
 LOCAL_LDLIBS += -llog
 include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
-LOCAL_MODULE := test_elf_hook
+LOCAL_MODULE := elf_hook_test
 LOCAL_SRC_FILES := test_elf_hook.c hook_elf.c hook_util.c
 LOCAL_CFLAGS += -Wall
 LOCAL_LDLIBS += -llog
 include $(BUILD_EXECUTABLE)
+include $(CLEAR_VARS)
+LOCAL_MODULE := remote_test
+LOCAL_SRC_FILES := test_remote.c
+LOCAL_CFLAGS += -Wall
+LOCAL_LDLIBS += -llog
+include $(BUILD_SHARED_LIBRARY)
