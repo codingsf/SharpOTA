@@ -4,8 +4,8 @@ ANDROID_LIBS := /Users/ming/Documents/source/Android-LIB
 
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
-LOCAL_MODULE := remote
-LOCAL_SRC_FILES := remote.c dex.cpp hook_elf.c hook_util.c
+LOCAL_MODULE := remote_dex
+LOCAL_SRC_FILES := remote_dex.c dex.cpp hook_elf.c hook_util.c
 LOCAL_CFLAGS += -Wall
 LOCAL_C_INCLUDES += $(ANDROID_TREE)/system/core/include
 LOCAL_C_INCLUDES += $(ANDROID_TREE)/frameworks/native/include
