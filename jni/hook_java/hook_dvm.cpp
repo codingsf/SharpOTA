@@ -6,6 +6,7 @@
 #include <malloc.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <dlfcn.h>
 #include <pthread.h>
 
@@ -25,13 +26,15 @@ static int loadDVM() {
     pthread_mutex_lock(&g_load_dvm_lock);
     h = dlopen("libdvm.so", RTLD_NOW);
     if (h) {
-        dvmUseJNIBridge = (dvmUseJNIBridge_t) dlsym(h, "dvmUseJNIBridge");
-        dvmCallJNIMethod = (dvmCallJNIMethod_t) dlsym(h, "dvmCallJNIMethod");
+        dvmUseJNIBridge = (dvmUseJNIBridge_t) dlsym(h, "_Z15dvmUseJNIBridgeP6MethodPv");
+        dvmCallJNIMethod = (dvmCallJNIMethod_t) dlsym(h, "_Z16dvmCallJNIMethodPKjP6JValuePK6MethodP6Thread");
         if (dvmUseJNIBridge &&
             dvmCallJNIMethod)
             g_load_dvm = 1;
         else
             g_load_dvm = 0;
+    } else {
+        LOGE("dlopen: %s", strerror(errno));
     }
     pthread_mutex_unlock(&g_load_dvm_lock);
 
