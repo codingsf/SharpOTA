@@ -18,7 +18,7 @@ int hook_java(void *env, struct hook_java_args *args) {
     char val[PROPERTY_VALUE_MAX];
 
     property_get("persist.sys.dalvik.vm.lib", val, "");
-    if (!strcmp(val, "libdvm.so"))
+    if (!strcmp(val, "libdvm.so") || *val == 0)
         return hook_dvm((JNIEnv *) env, args);
     if (!strcmp(val, "libart.so"))
         return hook_art((JNIEnv *) env, args);
