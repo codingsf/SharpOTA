@@ -11,6 +11,6 @@ LOCAL_C_INCLUDES += $(ANDROID_TREE)/libnativehelper/include
 LOCAL_CFLAGS += -Wall -DTAG=\"HSDK:$(LOCAL_MODULE)\"
 LOCAL_STATIC_LIBRARIES += hook_java
 LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)
-LOCAL_EXPORT_LDLIBS := -L$(ANDROID_LIBS) -llog -lcutils -landroid_runtime -ldvm
+LOCAL_EXPORT_LDLIBS := -L$(ANDROID_LIBS) -ldl -llog -lcutils -landroid_runtime
 include $(BUILD_STATIC_LIBRARY)
 

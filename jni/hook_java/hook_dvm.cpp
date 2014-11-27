@@ -6,6 +6,37 @@
 #include <malloc.h>
 #include <string.h>
 #include <stdlib.h>
+#include <dlfcn.h>
+#include <pthread.h>
+
+// XXX: this is tested only with Android 4.4.4
+
+static int g_load_dvm = 0;
+static pthread_mutex_t g_load_dvm_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static dvmUseJNIBridge_t dvmUseJNIBridge;
+static dvmCallJNIMethod_t dvmCallJNIMethod;
+
+static int loadDVM() {
+    void *h;
+
+    if (g_load_dvm)
+        return 0;
+    pthread_mutex_lock(&g_load_dvm_lock);
+    h = dlopen("libdvm.so", RTLD_NOW);
+    if (h) {
+        dvmUseJNIBridge = (dvmUseJNIBridge_t) dlsym(h, "dvmUseJNIBridge");
+        dvmCallJNIMethod = (dvmCallJNIMethod_t) dlsym(h, "dvmCallJNIMethod");
+        if (dvmUseJNIBridge &&
+            dvmCallJNIMethod)
+            g_load_dvm = 1;
+        else
+            g_load_dvm = 0;
+    }
+    pthread_mutex_unlock(&g_load_dvm_lock);
+
+    return g_load_dvm == 1 ? 0 : -1;
+}
 
 // XXX: version aware?
 // count include return value on my SH-04F 4.4.4
@@ -313,6 +344,10 @@ extern "C" int hook_dvm(JNIEnv *env, struct hook_java_args *args) {
     Method *method;
     int argsSize;
 
+    if (loadDVM()) {
+        LOGE("hook_dvm: loadDVM() failed");
+        return -1;
+    }
     if ((args->prev || args->post) && args->func) {
         LOGE("hook_dvm: invalid argument");
         return -1;

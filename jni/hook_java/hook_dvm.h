@@ -468,23 +468,6 @@ struct Method {
     bool            inProfile;
 };
 
-
-
-
-// libdex/DexProto.h
-/*
- * Get the parameter count of the given prototype.
- */
-size_t dexProtoGetParameterCount(const DexProto* pProto);
-
-// vm/Misc.h
-/*
- * Return a newly-allocated string for the internal-form class name for
- * the given type descriptor. That is, the initial "L" and final ";" (if
- * any) have been removed.
- */
-char* dvmDescriptorToName(const char* str);
-
 // vm/JniInternal.h
 /*
  * Native function return type; used by dvmPlatformInvoke().
@@ -510,83 +493,20 @@ enum DalvikJniReturnType {
 #define DALVIK_JNI_COUNT_MASK   0x0f000000
 #define DALVIK_JNI_COUNT_SHIFT  24
 
+#if 0
 void dvmCallJNIMethod(const u4* args, JValue* pResult,
     const Method* method, Thread* self);
-
-/*
- * Decode a local, global, or weak-global reference.
- */
-Object* dvmDecodeIndirectRef(Thread* self, jobject jobj);
+#endif
+typedef void (*dvmCallJNIMethod_t)(const u4*, JValue*,
+    const Method*, Thread*);
 
 /*
  * Configure "method" to use the JNI bridge to call "func".
  */
+#if 0
 void dvmUseJNIBridge(Method* method, void* func);
-
-// vm/Thread.h
-/*
- * Get our Thread* from TLS.
- *
- * Returns NULL if this isn't a thread that the VM is aware of.
- */
-Thread* dvmThreadSelf(void);
-
-// vm/alloc/Alloc.h
-/*
- * Remove an object from the internal tracking list.
- *
- * Does nothing if "obj" is NULL.
- *
- * The "self" argument is allowed as an optimization; it may be NULL.
- */
-extern "C" void dvmReleaseTrackedAlloc(Object* obj, Thread* self);
-
-// vm/interp/Stack.h
-/*
- * Invoke a method, using the specified arguments and return type, through
- * a reflection interface.
- *
- * Deals with boxing/unboxing primitives and performs widening conversions.
- *
- * "obj" should be null for a static method.
- *
- * "params" and "returnType" come from the Method object, so we don't have
- * to re-generate them from the method signature.  "returnType" should be
- * NULL if we're invoking a constructor.
- */
-Object* dvmInvokeMethod(Object* invokeObj, const Method* meth,
-    ArrayObject* argList, ArrayObject* params, ClassObject* returnType,
-    bool noAccessCheck);
-
-// vm/oo/Array.h
-/*
- * Create a new array, given an array class.  The class may represent an
- * array of references or primitives.
- *
- * Returns NULL with an exception raised if allocation fails.
- */
-extern "C" ArrayObject* dvmAllocArrayByClass(ClassObject* arrayClass,
-    size_t length, int allocFlags);
-
-// vm/oo/Class.h
-/*
- * Find the class object representing the primitive type with the
- * given descriptor. This returns NULL if the given type character
- * is invalid.
- */
-ClassObject* dvmFindPrimitiveClass(char type);
-
-/*
- * Find the class with the given descriptor.  Load it if it hasn't already
- * been.
- *
- * "loader" is the initiating class loader.
- */
-ClassObject* dvmFindClass(const char* descriptor, Object* loader);
-
-/*
- * Like dvmFindClass, but only for system classes.
- */
-ClassObject* dvmFindSystemClass(const char* descriptor);
+#endif
+typedef void (*dvmUseJNIBridge_t)(Method*, void*);
 
 #endif
+
