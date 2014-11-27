@@ -217,10 +217,12 @@ static jclass hsdk_find_clz2(JNIEnv *env, const char *clz) {
             env->ExceptionClear();
     }
     // try again with ArrayMap
-    fid_mLoaders = env->GetFieldID(clz_ApplicationLoaders, "mLoaders", "Landroid/util/ArrayMap;");
     if (fid_mLoaders == NULL) {
-        if (env->ExceptionOccurred())
-            env->ExceptionClear();
+        fid_mLoaders = env->GetFieldID(clz_ApplicationLoaders, "mLoaders", "Landroid/util/ArrayMap;");
+        if (fid_mLoaders == NULL) {
+            if (env->ExceptionOccurred())
+                env->ExceptionClear();
+        }
     }
     env->DeleteLocalRef(clz_ApplicationLoaders);
     if (fid_mLoaders == NULL) {
@@ -284,6 +286,7 @@ static jclass hsdk_find_clz3(JNIEnv *env, const char *clz) {
     jclass ret = NULL;
     jclass clz_Class;
     jmethodID mid_Class_forName;
+    jobject obj_Class;
 
     clz_Class = env->FindClass("java/lang/Class");
     if (clz_Class == NULL) {
@@ -298,16 +301,17 @@ static jclass hsdk_find_clz3(JNIEnv *env, const char *clz) {
         if (env->ExceptionOccurred())
             env->ExceptionClear();
     } else {
-        ret = (jclass) env->CallStaticObjectMethod(clz_Class, mid_Class_forName,
+        obj_Class = env->CallStaticObjectMethod(clz_Class, mid_Class_forName,
             env->NewStringUTF(clz));
+        // XXX: is this java/lang/Class jobject or jclass?
+        if (obj_Class == NULL) {
+            LOGD("hook_dvm: find_clz3 %d", __LINE__);
+            if (env->ExceptionOccurred())
+                env->ExceptionClear();
+        }
+        ret = env->GetObjectClass(obj_Class);
     }
     env->DeleteLocalRef(clz_Class);
-    if (ret == NULL) {
-        LOGD("hook_dvm: find_clz3 %d", __LINE__);
-        if (env->ExceptionOccurred())
-            env->ExceptionClear();
-        return NULL;
-    }
     return ret;
 }
 
@@ -340,7 +344,7 @@ static void hsdk_bridge_func(const u4 *args, JValue *pResult,
 }
 
 extern "C" int hook_dvm(JNIEnv *env, struct hook_java_args *args) {
-    jclass clz;
+    jclass clz, tmp;
     jmethodID jm;
     bool isStatic = false;
     struct hook_java_args *ha = NULL;
@@ -355,9 +359,19 @@ extern "C" int hook_dvm(JNIEnv *env, struct hook_java_args *args) {
         LOGE("hook_dvm: invalid argument");
         return -1;
     }
-    clz = hsdk_find_clz(env, args->clz);
-    if (clz == NULL) {
+    tmp = hsdk_find_clz(env, args->clz);
+    if (tmp == NULL) {
         LOGE("hook_dvm: class `%s\' not found", args->clz);
+        return -1;
+    }
+    // XXX: find_clz3w
+    // saying given clz is invalid
+    //W/dalvikvm( 8493): Invalid indirect reference 0x41cd9338 in decodeIndirectRef
+    //E/dalvikvm( 8493): VM aborting
+    clz = (jclass) env->NewGlobalRef(tmp);
+    env->DeleteLocalRef(tmp);
+    if (clz == NULL) {
+        LOGE("hook_dvm: unable to ref clz");
         return -1;
     }
     jm = env->GetMethodID(clz, args->mtd, args->sig);
@@ -369,12 +383,13 @@ extern "C" int hook_dvm(JNIEnv *env, struct hook_java_args *args) {
             env->ExceptionClear();
         if (jm == NULL) {
             LOGE("hook_dvm: method `%s\' with sig `%s\' not found", args->mtd, args->sig);
-            env->DeleteLocalRef(clz);
+            env->DeleteGlobalRef(clz);
             return -1;
         }
         isStatic = true;
     }
-    env->DeleteLocalRef(clz);
+    // XXX: leak the global ref so GC won't recycle the class then Member will be always valid?
+    env->DeleteGlobalRef(clz);
     method = (Method *) jm;
     if ((method->nativeFunc == hsdk_bridge_func) ||
         (method->nativeFunc == dvmCallJNIMethod && method->insns == args->func)) {
@@ -398,6 +413,7 @@ extern "C" int hook_dvm(JNIEnv *env, struct hook_java_args *args) {
         ha->post = args->post;
     }
     argsSize = getMethodArgsSize(method->shorty);
+    // XXX: vm abort here
     if (isStatic)
         argsSize += 1;
     method->registersSize = argsSize;
@@ -412,7 +428,8 @@ extern "C" int hook_dvm(JNIEnv *env, struct hook_java_args *args) {
     }
     SET_METHOD_FLAG(method, ACC_NATIVE);
     if (args->func)
-        LOGD("hook_dvm: L%s;%s->%s => %p", args->clz, args->mtd, args->sig, args->func);
+        LOGD("hook_dvm: %sL%s;%s->%s => %p", isStatic ? "static " : "",
+            args->clz, args->mtd, args->sig, args->func);
 
     return 0;
 }
