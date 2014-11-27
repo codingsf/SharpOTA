@@ -1,6 +1,6 @@
 
-#ifndef _PAYLOAD_H_
-#define _PAYLOAD_H_
+#ifndef _SHELLCODE_H_
+#define _SHELLCODE_H_
 
 #include <asm/ptrace.h>
 

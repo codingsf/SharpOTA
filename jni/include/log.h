@@ -7,11 +7,11 @@
 
 #define DEBUG 1
 
-#define TAG "HookSDK"
 #define LOGX(X, ...) do { \
-    if (DEBUG) \
-        fprintf(stderr, __VA_ARGS__); fflush(stderr); \
-    __android_log_print(X, TAG, __VA_ARGS__); \
+        if (DEBUG) { \
+            fprintf(stderr, __VA_ARGS__); fflush(stderr); \
+            __android_log_print(X, TAG, __VA_ARGS__); \
+        } \
     } while (0)
 #define LOGD(...) LOGX(ANDROID_LOG_DEBUG, __VA_ARGS__)
 #define LOGW(...) LOGX(ANDROID_LOG_WARN, __VA_ARGS__)
