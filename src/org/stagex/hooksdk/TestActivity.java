@@ -12,7 +12,7 @@ import android.widget.Button;
 public class TestActivity extends ActionBarActivity {
 
 	static {
-		System.loadLibrary("java_hook_test");
+		System.loadLibrary("test_java_hook");
 	}
 
 	private int testJavaHook_add(int a, int b) {
@@ -20,14 +20,24 @@ public class TestActivity extends ActionBarActivity {
 		return a + b;
 	}
 
+	private static int testJavaHook_sub(int a, int b) {
+		Logger.d("a = %d, b = %d", a, b);
+		return a - b;
+	}
+
 	private native void testJavaHook();
 
 	private void test() {
-		// use this to trigger binder so we can test hook
-		// better to make IpcService non-independent process
-		testJavaHook_add(1, 2);
+		int val;
+		val = testJavaHook_add(1, 2);
+		Logger.d("a + b = %d", val);
+		val = testJavaHook_sub(4, 3);
+		Logger.d("a - b = %d", val);
 		testJavaHook();
-		testJavaHook_add(1, 2);
+		val = testJavaHook_add(1, 2);
+		Logger.d("a + b = %d", val);
+		val = testJavaHook_sub(4, 3);
+		Logger.d("a - b = %d", val);
 	}
 
 	@Override
