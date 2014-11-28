@@ -10,11 +10,19 @@
 #include <dlfcn.h>
 #include <pthread.h>
 
-// XXX: this is tested only with Android 4.4.4
+// XXX:
+// Tested with:
+// SH-01F 4.2.2
+// SH-04F 4.4.4
+// 303SH  4.2.2
 
 static int g_load_dvm = 0;
 static pthread_mutex_t g_load_dvm_lock = PTHREAD_MUTEX_INITIALIZER;
 
+// XXX: Are those symbols stable?
+static dexProtoGetShorty_t dexProtoGetShorty;
+static dexProtoComputeArgsSize_t dexProtoComputeArgsSize;
+static dvmPlatformInvokeHints_t dvmPlatformInvokeHints;
 static dvmUseJNIBridge_t dvmUseJNIBridge;
 static dvmCallJNIMethod_t dvmCallJNIMethod;
 
@@ -26,13 +34,25 @@ static int loadDVM() {
     pthread_mutex_lock(&g_load_dvm_lock);
     h = dlopen("libdvm.so", RTLD_NOW);
     if (h) {
+        dexProtoGetShorty = (dexProtoGetShorty_t) dlsym(h, "_Z17dexProtoGetShortyPK8DexProto");
+        dexProtoComputeArgsSize = (dexProtoComputeArgsSize_t) dlsym(h, "_Z23dexProtoComputeArgsSizePK8DexProto");
+        dvmPlatformInvokeHints = (dvmPlatformInvokeHints_t) dlsym(h, "_Z22dvmPlatformInvokeHintsPK8DexProto");
         dvmUseJNIBridge = (dvmUseJNIBridge_t) dlsym(h, "_Z15dvmUseJNIBridgeP6MethodPv");
         dvmCallJNIMethod = (dvmCallJNIMethod_t) dlsym(h, "_Z16dvmCallJNIMethodPKjP6JValuePK6MethodP6Thread");
-        if (dvmUseJNIBridge &&
-            dvmCallJNIMethod)
-            g_load_dvm = 1;
-        else
+        if (!dexProtoGetShorty ||
+            !dexProtoComputeArgsSize ||
+            !dvmPlatformInvokeHints ||
+            !dvmUseJNIBridge ||
+            !dvmCallJNIMethod) {
             g_load_dvm = 0;
+            LOGD("dexProtoGetShorty = %p", dexProtoGetShorty);
+            LOGD("dexProtoComputeArgsSize = %p", dexProtoComputeArgsSize);
+            LOGD("dvmPlatformInvokeHints = %p", dvmPlatformInvokeHints);
+            LOGD("dvmUseJNIBridge = %p", dvmUseJNIBridge);
+            LOGD("dvmCallJNIMethod = %p", dvmCallJNIMethod);
+        } else {
+            g_load_dvm = 1;
+        }
     } else {
         LOGE("dlopen: %s", strerror(errno));
     }
@@ -41,89 +61,25 @@ static int loadDVM() {
     return g_load_dvm == 1 ? 0 : -1;
 }
 
-// XXX: version aware?
-// count include return value on my SH-04F 4.4.4
-static int getMethodArgsSize(const char *shorty) {
-    int count = 0;
-
-    for (;;) {
-        switch ((*shorty++)) {
-        case '\0':
-            return count;
-        case 'D':
-        case 'J': {
-            count += 2;
-            break;
-        }
-        default: {
-            count += 1;
-            break;
-        }
-        }
-    }
-
-    return count;
-}
-
-#ifdef __arm__
-// from vm/arch/arm/HintsEABI.cpp
-static u4 dvmPlatformInvokeHints(const char* shorty)
-{
-    const char* sig = shorty;
-    int padFlags, jniHints;
-    char sigByte;
-    int stackOffset, padMask;
-
-    stackOffset = padFlags = 0;
-    padMask = 0x00000001;
-
-    /* Skip past the return type */
-    sig++;
-
-    while (true) {
-        sigByte = *(sig++);
-
-        if (sigByte == '\0')
-            break;
-
-        if (sigByte == 'D' || sigByte == 'J') {
-            if ((stackOffset & 1) != 0) {
-                padFlags |= padMask;
-                stackOffset++;
-                padMask <<= 1;
-            }
-            stackOffset += 2;
-            padMask <<= 2;
-        } else {
-            stackOffset++;
-            padMask <<= 1;
-        }
-    }
-
-    jniHints = 0;
-
-    if (stackOffset > DALVIK_JNI_COUNT_SHIFT) {
-        /* too big for "fast" version */
-        jniHints = DALVIK_JNI_NO_ARG_INFO;
-    } else {
-        assert((padFlags & (0xffffffff << DALVIK_JNI_COUNT_SHIFT)) == 0);
-        stackOffset -= 2;           // r2/r3 holds first two items
-        if (stackOffset < 0)
-            stackOffset = 0;
-        jniHints |= ((stackOffset+1) / 2) << DALVIK_JNI_COUNT_SHIFT;
-        jniHints |= padFlags;
-    }
-
-    return jniHints;
-}
-#else
-#error "Implement me!"
-#endif
-
 // from vm/Native.cpp
-static int dvmComputeJniArgInfo(const char* shorty)
+/*
+ * jniArgInfo (32-bit int) layout:
+ *   SRRRHHHH HHHHHHHH HHHHHHHH HHHHHHHH
+ *
+ *   S - if set, do things the hard way (scan the signature)
+ *   R - return-type enumeration
+ *   H - target-specific hints
+ *
+ * This info is used at invocation time by dvmPlatformInvoke.  In most
+ * cases, the target-specific hints allow dvmPlatformInvoke to avoid
+ * having to fully parse the signature.
+ *
+ * The return-type bits are always set, even if target-specific hint bits
+ * are unavailable.
+ */
+static int computeJniArgInfo(const DexProto* proto)
 {
-    const char* sig = shorty;
+    const char* sig = dexProtoGetShorty(proto);
     int returnType, jniArgInfo;
     u4 hints;
 
@@ -158,7 +114,7 @@ static int dvmComputeJniArgInfo(const char* shorty)
 
     jniArgInfo = returnType << DALVIK_JNI_RETURN_SHIFT;
 
-    hints = dvmPlatformInvokeHints(shorty);
+    hints = dvmPlatformInvokeHints(proto);
 
     if (hints & DALVIK_JNI_NO_ARG_INFO) {
         jniArgInfo |= DALVIK_JNI_NO_ARG_INFO;
@@ -412,14 +368,14 @@ extern "C" int hook_dvm(JNIEnv *env, struct hook_java_args *args) {
         ha->prev = args->prev;
         ha->post = args->post;
     }
-    argsSize = getMethodArgsSize(method->shorty);
-    // XXX: vm abort here
-    if (isStatic)
+    argsSize = dexProtoComputeArgsSize(&method->prototype);
+    if (!isStatic)
         argsSize += 1;
     method->registersSize = argsSize;
     method->insSize = argsSize;
     method->outsSize = 0;
-    method->jniArgInfo = dvmComputeJniArgInfo(method->shorty);
+    method->insns = NULL;
+    method->jniArgInfo = computeJniArgInfo(&method->prototype);
     if (!args->func) {
         method->insns = (const u2*) ha;
         method->nativeFunc = hsdk_bridge_func;

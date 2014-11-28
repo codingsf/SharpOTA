@@ -5,6 +5,8 @@
 #include <nativehelper/jni.h>
 #include <stdint.h>
 
+#define INLINE inline
+
 // vm/Common.h
 /*
  * These match the definitions in the VM specification.
@@ -71,11 +73,34 @@ struct DexProto {
     u4 protoIdx;                /* index into proto_ids table of dexFile */
 };
 
+/*
+ * Get the short-form method descriptor for the given prototype. The
+ * prototype must be protoIdx-based.
+ */
+#if 0
+const char* dexProtoGetShorty(const DexProto* pProto);
+#endif
+typedef const char* (*dexProtoGetShorty_t)(const DexProto*);
+
+/*
+ * Compute the number of parameter words (u4 units) required by the
+ * given prototype. For example, if the method takes (int, long) and
+ * returns double, this would return 3 (one for the int, two for the
+ * long, and the return type isn't relevant).
+ */
+#if 0
+int dexProtoComputeArgsSize(const DexProto* pProto);
+#endif
+typedef int (*dexProtoComputeArgsSize_t)(const DexProto*);
+
 // vm/Native.h
 /*
  * Generate hints to speed native calls.  This is platform specific.
  */
+#if 0
 u4 dvmPlatformInvokeHints(const DexProto* proto);
+#endif
+typedef u4 (*dvmPlatformInvokeHints_t)(const DexProto*);
 
 // vm/oo/Object.h
 
