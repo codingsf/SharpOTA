@@ -3,13 +3,13 @@ package org.stagex.hooksdk;
 import org.stagex.hooksdk.remote.HookMain;
 import org.stagex.hooksdk.utils.Logger;
 
-import android.support.v7.app.ActionBarActivity;
+import android.app.Activity;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 
-public class TestActivity extends ActionBarActivity {
+public class TestActivity extends Activity {
 
 	static {
 		System.loadLibrary("test_java_hook");
