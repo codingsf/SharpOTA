@@ -158,6 +158,8 @@ static int inject(pid_t pid, const char *sopath, const char *soentry, int argc, 
         args_size += strlen(argv[i]);
         args_size += 1;
     }
+    if (args_size & 3)
+        args_size += 4 - (args_size & 3);
     if (code_size + args_size > 0x4000 - 4) {
         LOGE("[-] invalid parameters\n");
         return -1;
