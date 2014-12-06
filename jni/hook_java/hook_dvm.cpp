@@ -20,11 +20,11 @@ static int g_load_dvm = 0;
 static pthread_mutex_t g_load_dvm_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // XXX: Are those symbols stable?
-static dexProtoGetShorty_t dexProtoGetShorty;
-static dexProtoComputeArgsSize_t dexProtoComputeArgsSize;
-static dvmPlatformInvokeHints_t dvmPlatformInvokeHints;
-static dvmUseJNIBridge_t dvmUseJNIBridge;
-static dvmCallJNIMethod_t dvmCallJNIMethod;
+static dexProtoGetShorty_t dexProtoGetShorty = NULL;
+static dexProtoComputeArgsSize_t dexProtoComputeArgsSize = NULL;
+static dvmPlatformInvokeHints_t dvmPlatformInvokeHints = NULL;
+static dvmUseJNIBridge_t dvmUseJNIBridge = NULL;
+static dvmCallJNIMethod_t dvmCallJNIMethod = NULL;
 
 static int loadDVM() {
     void *h;
@@ -45,17 +45,15 @@ static int loadDVM() {
             !dvmUseJNIBridge ||
             !dvmCallJNIMethod) {
             g_load_dvm = 0;
-            LOGD("dexProtoGetShorty = %p", dexProtoGetShorty);
-            LOGD("dexProtoComputeArgsSize = %p", dexProtoComputeArgsSize);
-            LOGD("dvmPlatformInvokeHints = %p", dvmPlatformInvokeHints);
-            LOGD("dvmUseJNIBridge = %p", dvmUseJNIBridge);
-            LOGD("dvmCallJNIMethod = %p", dvmCallJNIMethod);
         } else {
             g_load_dvm = 1;
         }
-    } else {
-        LOGE("dlopen: %s", strerror(errno));
     }
+    LOGD("dexProtoGetShorty = %p", dexProtoGetShorty);
+    LOGD("dexProtoComputeArgsSize = %p", dexProtoComputeArgsSize);
+    LOGD("dvmPlatformInvokeHints = %p", dvmPlatformInvokeHints);
+    LOGD("dvmUseJNIBridge = %p", dvmUseJNIBridge);
+    LOGD("dvmCallJNIMethod = %p", dvmCallJNIMethod);
     pthread_mutex_unlock(&g_load_dvm_lock);
 
     return g_load_dvm == 1 ? 0 : -1;
@@ -360,6 +358,10 @@ extern "C" int hook_dvm(JNIEnv *env, struct hook_java_args *args) {
         ha = (struct hook_java_args *) calloc(1, sizeof(*ha));
         if (!ha) {
             LOGE("hook_dvm: calloc failed");
+            if (args->old) {
+                free(args->old);
+                args->old = 0;
+            }
             return -1;
         }
         ha->clz = strdup(args->clz);
@@ -383,9 +385,10 @@ extern "C" int hook_dvm(JNIEnv *env, struct hook_java_args *args) {
         dvmUseJNIBridge(method, args->func);
     }
     SET_METHOD_FLAG(method, ACC_NATIVE);
-    if (args->func)
+    if (args->func) {
         LOGD("hook_dvm: %sL%s;%s->%s => %p", isStatic ? "static " : "",
             args->clz, args->mtd, args->sig, args->func);
+    }
 
     return 0;
 }
