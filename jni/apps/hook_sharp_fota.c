@@ -50,7 +50,8 @@ static jstring android_telephony_TelephonyManager_getNetworkOperator_L_sbm(JNIEn
 
 // return a real DOCOMO phone number
 static jstring android_telephony_TelephonyManager_getLine1Number_L_dcm(JNIEnv *env, jobject thiz) {
-    const char *no = "09026553215";
+    // const char *no = "09026553215";
+    const char *no = "08020080582";
     LOGV("emualte getLine1Number: %s", no);
     return (*env)->NewStringUTF(env, no);
 }
@@ -64,7 +65,8 @@ static jstring android_telephony_TelephonyManager_getLine1Number_L_sbm(JNIEnv *e
 
 // return a real DOCOMO IMSI
 static jstring android_telephony_TelephonyManager_getSubscriberId_L_dcm(JNIEnv *env, jobject thiz) {
-    const char *imsi = "440103114861967";
+    // const char *imsi = "440103114861967";
+    const char *imsi = "440103068936867";
     LOGV("emualte getSubscriberId: %s", imsi);
     return (*env)->NewStringUTF(env, imsi);
 }
