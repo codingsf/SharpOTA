@@ -138,10 +138,11 @@ int SharpMain(int argc, char *argv[]) {
         LOGE("invalid args");
         return -1;
     }
-    if (!strcmp(argv[0], "fota")) {
+    if (!strcmp(argv[0], "com.nttdocomo.android.fota") ||
+        !strcmp(argv[0], "jp.co.sharp.android.FotaApp")) {
         mtab = mtab_fota;
         n = sizeof(mtab_fota) / sizeof(*mtab);
-    } else if (!strcmp(argv[0], "osv")) {
+    } else if (!strcmp(argv[0], "com.nttdocomo.android.osv")) {
         mtab = mtab_osv;
         n = sizeof(mtab_osv) / sizeof(*mtab);
     } else {
